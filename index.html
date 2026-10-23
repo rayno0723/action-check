@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- 強制瀏覽器不快取 HTML 頁面 -->
+    <!-- 強制瀏覽器不快取 HTML 頁面 (GitHub Pages 部署優化) -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -12,32 +12,44 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="TCG裁判盯桌">
     <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0f172a">
+
+    <!-- 內建 Data-URI Web App Manifest (離線 PWA 支援) -->
+    <link rel="manifest" href='data:application/manifest+json,{"name":"TCG 裁判盯桌動作檢查表","short_name":"裁判盯桌","start_url":".","display":"standalone","background_color":"#020617","theme_color":"#0f172a","icons":[{"src":"data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📋</text></svg>","sizes":"512x512","type":"image/svg+xml"}]}'>
 
     <title>TCG 裁判盯桌動作檢查表</title>
+    
+    <!-- 載入 Tailwind CSS (線上載入，離線時自動由 Service Worker / 備用樣式接管) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            50: '#f0fdf4',
-                            500: '#22c55e',
-                            600: '#16a34a',
-                            700: '#15803d',
+        if (window.tailwind) {
+            tailwind.config = {
+                darkMode: 'class',
+                theme: {
+                    extend: {
+                        colors: {
+                            brand: {
+                                50: '#f0fdf4',
+                                500: '#22c55e',
+                                600: '#16a34a',
+                                700: '#15803d',
+                            }
                         }
                     }
                 }
-            }
-        };
-    </script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
-        body {
-            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            touch-action: manipulation;
+            };
         }
+    </script>
+    
+    <style>
+        /* 原生系統字型 (無需連接外網下載字型檔) */
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* 滾動條樣式 */
         ::-webkit-scrollbar {
             width: 8px;
             height: 8px;
@@ -52,6 +64,10 @@
         ::-webkit-scrollbar-thumb:hover {
             background: rgba(148, 163, 184, 0.8);
         }
+
+        /* 備用 CSS 確保斷網環境下也能正常顯示排版 (Offline Basic Styling) */
+        table { width: 100%; border-collapse: collapse; }
+        select { -webkit-appearance: none; appearance: none; }
     </style>
 </head>
 <body class="bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen pb-28 transition-colors duration-200">
@@ -63,7 +79,7 @@
                 <span class="text-2xl">📋</span>
                 <div>
                     <h1 class="text-xl sm:text-2xl font-black tracking-wide text-amber-600 dark:text-amber-400">TCG 裁判盯桌動作檢查表</h1>
-                    <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">專為卡牌賽事裁判設計之盯桌記錄系統</p>
+                    <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">專為卡牌賽事裁判設計之盯桌記錄系統 (支援離線使用與 GitHub 自動更新)</p>
                 </div>
             </div>
 
@@ -77,7 +93,7 @@
                 <button id="btn-export-csv" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-bold transition flex items-center gap-1 shadow-md">
                     <span>📥</span> 匯出 CSV
                 </button>
-                <button id="btn-reset" class="px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs sm:text-sm font-bold transition flex items-center gap-1 shadow-md">
+                <button id="btn-reset-trigger" class="px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs sm:text-sm font-bold transition flex items-center gap-1 shadow-md">
                     <span>🔄</span> 重置比賽
                 </button>
             </div>
@@ -94,7 +110,7 @@
                     <span>⚙️</span> 對局牌組與剩餘獎賞卡
                 </h2>
                 <div id="save-status" class="text-xs font-bold text-emerald-600 dark:text-emerald-400 opacity-80 flex items-center gap-1">
-                    <span>✓</span> 自動儲存中
+                    <span>✓</span> 自動儲存中 (離線可用)
                 </div>
             </div>
 
@@ -147,7 +163,7 @@
                     <span>📊</span> 盯桌紀錄列表
                 </h2>
                 <div class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-bold">
-                    各動作欄位色彩區分，點擊點選避免誤觸
+                    點擊該列任一處即可套用黃底與黃色直行高亮
                 </div>
             </div>
 
@@ -204,6 +220,27 @@
         </div>
     </div>
 
+    <!-- Confirmation Modal for Reset -->
+    <div id="confirm-modal-overlay" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center gap-3 text-red-600 dark:text-red-400">
+                <span class="text-2xl">⚠️</span>
+                <h3 class="text-xl font-black">確定要重置比賽嗎？</h3>
+            </div>
+            <p class="text-slate-700 dark:text-slate-300 text-sm leading-relaxed">
+                重置後，當前比賽的所有盯桌動作紀錄、牌組名稱與獎賞卡異動都將被清空並恢復為預設 3 回合狀態。
+            </p>
+            <div class="flex justify-end gap-3 pt-2">
+                <button id="btn-confirm-reset-cancel" class="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-sm border border-slate-300 dark:border-slate-700 transition">
+                    取消
+                </button>
+                <button id="btn-confirm-reset-ok" class="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-sm transition shadow-md">
+                    確定重置
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Generic Modal Dialog -->
     <div id="modal-overlay" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
         <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
@@ -222,10 +259,54 @@
         </div>
     </div>
 
-    <!-- JavaScript Logic -->
+    <!-- JavaScript Logic & Offline Service Worker Registration -->
     <script>
         (function () {
             'use strict';
+
+            // Register Inline Service Worker with Network-First Strategy
+            if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.protocol === 'http:')) {
+                const swCode = `
+                    const CACHE_NAME = 'tcg-referee-cache-v1';
+
+                    self.addEventListener('install', (e) => {
+                        self.skipWaiting();
+                    });
+
+                    self.addEventListener('activate', (e) => {
+                        e.waitUntil(
+                            caches.keys().then((keys) => {
+                                return Promise.all(
+                                    keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
+                                );
+                            }).then(() => clients.claim())
+                        );
+                    });
+
+                    // Network-First Strategy: Always fetch newest online, fallback to cache if offline
+                    self.addEventListener('fetch', (e) => {
+                        e.respondWith(
+                            fetch(e.request).then((networkResponse) => {
+                                if (networkResponse && networkResponse.status === 200) {
+                                    const resClone = networkResponse.clone();
+                                    caches.open(CACHE_NAME).then((cache) => cache.put(e.request, resClone));
+                                }
+                                return networkResponse;
+                            }).catch(() => {
+                                // Fallback to offline cache when network connection fails
+                                return caches.match(e.request);
+                            })
+                        );
+                    });
+                `;
+                try {
+                    const blob = new Blob([swCode], { type: 'application/javascript' });
+                    const swUrl = URL.createObjectURL(blob);
+                    navigator.serviceWorker.register(swUrl).catch(() => {});
+                } catch (e) {
+                    // SW registration fallback
+                }
+            }
 
             // Default State Definition
             const DEFAULT_STATE = {
@@ -311,7 +392,7 @@
 
             function loadInitialState() {
                 try {
-                    const saved = localStorage.getItem('tcg_referee_app_v5');
+                    const saved = localStorage.getItem('tcg_referee_app_v6');
                     if (saved) {
                         const parsed = JSON.parse(saved);
                         if (parsed && Array.isArray(parsed.turns) && parsed.turns.length > 0) {
@@ -328,7 +409,7 @@
 
             function saveState() {
                 try {
-                    localStorage.setItem('tcg_referee_app_v5', JSON.stringify(appState));
+                    localStorage.setItem('tcg_referee_app_v6', JSON.stringify(appState));
                     const statusEl = document.getElementById('save-status');
                     if (statusEl) {
                         statusEl.classList.remove('opacity-40');
@@ -348,7 +429,11 @@
             const themeIcon = document.getElementById('theme-icon');
             const themeText = document.getElementById('theme-text');
 
-            const btnReset = document.getElementById('btn-reset');
+            const btnResetTrigger = document.getElementById('btn-reset-trigger');
+            const confirmModalOverlay = document.getElementById('confirm-modal-overlay');
+            const btnConfirmResetOk = document.getElementById('btn-confirm-reset-ok');
+            const btnConfirmResetCancel = document.getElementById('btn-confirm-reset-cancel');
+
             const btnCopyReport = document.getElementById('btn-copy-report');
             const btnExportCSV = document.getElementById('btn-export-csv');
             const btnAddTurn = document.getElementById('btn-add-turn');
@@ -390,6 +475,14 @@
 
             function closeModal() {
                 if (modalOverlay) modalOverlay.classList.add('hidden');
+            }
+
+            function showConfirmResetModal() {
+                if (confirmModalOverlay) confirmModalOverlay.classList.remove('hidden');
+            }
+
+            function hideConfirmResetModal() {
+                if (confirmModalOverlay) confirmModalOverlay.classList.add('hidden');
             }
 
             // Expose Global Window Handlers
@@ -822,11 +915,12 @@
                 if (btnExportCSV) btnExportCSV.addEventListener('click', exportCSV);
                 if (btnAddTurn) btnAddTurn.addEventListener('click', addNextTurn);
 
-                if (btnReset) {
-                    btnReset.addEventListener('click', () => {
-                        if (confirm('確定要重置當前對局的所有紀錄嗎？')) {
-                            resetMatch();
-                        }
+                if (btnResetTrigger) btnResetTrigger.addEventListener('click', showConfirmResetModal);
+                if (btnConfirmResetCancel) btnConfirmResetCancel.addEventListener('click', hideConfirmResetModal);
+                if (btnConfirmResetOk) {
+                    btnConfirmResetOk.addEventListener('click', () => {
+                        hideConfirmResetModal();
+                        resetMatch();
                     });
                 }
 
