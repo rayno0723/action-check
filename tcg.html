@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 強制瀏覽器不快取 HTML 頁面 -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <!-- 允許全螢幕獨立 App (Standalone PWA) 模式 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="TCG裁判盯桌">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <title>TCG 裁判盯桌動作檢查表</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                        }
+                    }
+                }
+            }
+        };
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+        body {
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            touch-action: manipulation;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(100, 116, 139, 0.5);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(148, 163, 184, 0.8);
+        }
+    </style>
+</head>
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen pb-28 transition-colors duration-200">
+
+    <!-- Top Header -->
+    <header class="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-lg px-4 py-3">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">📋</span>
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-black tracking-wide text-amber-600 dark:text-amber-400">TCG 裁判盯桌動作檢查表</h1>
+                    <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">專為卡牌賽事裁判設計之盯桌記錄系統</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 flex-wrap justify-end w-full sm:w-auto">
+                <button id="btn-theme-toggle" class="px-3.5 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs sm:text-sm font-bold border border-slate-300 dark:border-slate-700 transition flex items-center gap-1.5 shadow-sm">
+                    <span id="theme-icon">🌙</span> <span id="theme-text">深色模式</span>
+                </button>
+                <button id="btn-copy-report" class="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs sm:text-sm font-black transition flex items-center gap-1 shadow-md">
+                    <span>📋</span> 複製報告
+                </button>
+                <button id="btn-export-csv" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-bold transition flex items-center gap-1 shadow-md">
+                    <span>📥</span> 匯出 CSV
+                </button>
+                <button id="btn-reset" class="px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs sm:text-sm font-bold transition flex items-center gap-1 shadow-md">
+                    <span>🔄</span> 重置比賽
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-3 sm:px-6 pt-4 space-y-4">
+
+        <!-- Match Info & Settings Card -->
+        <section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-md space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+                <h2 class="text-base sm:text-lg font-black text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                    <span>⚙️</span> 對局牌組與剩餘獎賞卡
+                </h2>
+                <div id="save-status" class="text-xs font-bold text-emerald-600 dark:text-emerald-400 opacity-80 flex items-center gap-1">
+                    <span>✓</span> 自動儲存中
+                </div>
+            </div>
+
+            <!-- Player Decks Inputs & Remaining Prizes Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+                <!-- Player Decks Inputs -->
+                <div class="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="relative">
+                        <label for="input-p1-deck" class="block text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 mb-1">先攻玩家 / 牌組名稱與特徵 (P1)</label>
+                        <input id="input-p1-deck" type="text" placeholder="例: 密勒頓 / 雷屬性..." class="w-full bg-slate-50 dark:bg-slate-950 border border-emerald-600/50 rounded-xl px-3 py-2 text-base font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500 transition">
+                    </div>
+                    <div class="relative">
+                        <label for="input-p2-deck" class="block text-xs sm:text-sm font-bold text-sky-600 dark:text-sky-400 mb-1">後攻玩家 / 牌組名稱與特徵 (P2)</label>
+                        <input id="input-p2-deck" type="text" placeholder="例: 噴火龍 / 暗屬性..." class="w-full bg-slate-50 dark:bg-slate-950 border border-sky-600/50 rounded-xl px-3 py-2 text-base font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500 transition">
+                    </div>
+                </div>
+
+                <!-- Remaining Prize Cards Summary Counters -->
+                <div class="lg:col-span-5 grid grid-cols-2 gap-3">
+                    <div class="bg-slate-50 dark:bg-slate-950 border border-emerald-200 dark:border-emerald-800/80 rounded-xl p-2.5 flex items-center justify-between shadow-sm">
+                        <div>
+                            <div class="text-xs font-black text-emerald-600 dark:text-emerald-400">P1 先攻剩餘獎賞</div>
+                            <div id="p1-deck-summary" class="text-xs font-bold text-slate-500 dark:text-slate-400 truncate max-w-[100px]">先攻牌組</div>
+                        </div>
+                        <div id="p1-remaining-prizes" class="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 px-2">6</div>
+                    </div>
+
+                    <div class="bg-slate-50 dark:bg-slate-950 border border-sky-200 dark:border-sky-800/80 rounded-xl p-2.5 flex items-center justify-between shadow-sm">
+                        <div>
+                            <div class="text-xs font-black text-sky-600 dark:text-sky-400">P2 後攻剩餘獎賞</div>
+                            <div id="p2-deck-summary" class="text-xs font-bold text-slate-500 dark:text-slate-400 truncate max-w-[100px]">後攻牌組</div>
+                        </div>
+                        <div id="p2-remaining-prizes" class="text-2xl sm:text-3xl font-black text-sky-600 dark:text-sky-400 px-2">6</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Toolbar for Decks -->
+            <div class="flex items-center justify-end pt-1">
+                <button id="btn-swap-players" class="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs sm:text-sm font-bold border border-slate-300 dark:border-slate-700 transition flex items-center gap-1.5 shadow-sm">
+                    <span>🔄</span> 對調先後攻牌組與特徵
+                </button>
+            </div>
+        </section>
+
+        <!-- Monitoring Board -->
+        <section class="space-y-3">
+            <div class="flex items-center justify-between px-1">
+                <h2 class="text-lg sm:text-xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <span>📊</span> 盯桌紀錄列表
+                </h2>
+                <div class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-bold">
+                    各動作欄位色彩區分，點擊點選避免誤觸
+                </div>
+            </div>
+
+            <!-- Desktop Table View -->
+            <div class="hidden md:block bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-800 text-base sm:text-lg font-black">
+                            <th class="py-4 px-3 text-center w-36 border-r border-slate-200 dark:border-slate-800">回合 / 選手</th>
+                            <th class="py-4 px-2 text-center text-emerald-600 dark:text-emerald-400 border-r border-slate-200 dark:border-slate-800">支援者</th>
+                            <th class="py-4 px-2 text-center text-amber-600 dark:text-amber-400 border-r border-slate-200 dark:border-slate-800">填能</th>
+                            <th class="py-4 px-2 text-center text-purple-600 dark:text-purple-400 border-r border-slate-200 dark:border-slate-800">撤退</th>
+                            <th class="py-4 px-2 text-center text-cyan-600 dark:text-cyan-400 border-r border-slate-200 dark:border-slate-800">場地</th>
+                            <th class="py-4 px-2 text-center text-rose-600 dark:text-rose-400 border-r border-slate-200 dark:border-slate-800">下場地</th>
+                            <th class="py-4 px-3 text-center text-amber-600 dark:text-amber-300 border-r border-slate-200 dark:border-slate-800 w-40">獲取獎賞卡</th>
+                            <th class="py-4 px-3 text-center text-red-600 dark:text-red-400 w-36">罰獎賞卡</th>
+                        </tr>
+                    </thead>
+                    <tbody id="desktop-tbody" class="divide-y divide-slate-200 dark:divide-slate-800/80 text-base font-medium">
+                        <!-- Dynamic desktop rows rendered by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Mobile Card View -->
+            <div id="mobile-cards-container" class="block md:hidden space-y-3">
+                <!-- Dynamic mobile cards rendered by JS -->
+            </div>
+
+            <!-- Add Turn Button Container -->
+            <div class="pt-2 flex justify-center">
+                <button id="btn-add-turn" class="w-full sm:w-2/3 py-3.5 px-6 rounded-2xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-lg sm:text-xl shadow-lg border border-amber-400 transition flex items-center justify-center gap-2 active:scale-98">
+                    <span>➕</span> 新增下一回合 (Add Next Turn)
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Floating Bottom Navigation Control Bar -->
+    <div class="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 px-4 py-3 shadow-2xl">
+        <div class="max-w-3xl mx-auto flex items-center justify-between gap-3">
+            <button id="btn-prev-turn" class="px-4 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 font-black text-base border border-slate-300 dark:border-slate-700 shadow flex items-center gap-1 active:scale-95 transition">
+                ◄ 上一步
+            </button>
+
+            <div class="text-center truncate px-2">
+                <div id="active-turn-label" class="text-xs sm:text-sm font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">Turn 1 (先攻)</div>
+                <div id="active-deck-label" class="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 truncate">先攻牌組</div>
+            </div>
+
+            <button id="btn-next-turn" class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-base sm:text-lg shadow flex items-center gap-1 active:scale-95 transition">
+                下一位 ➔
+            </button>
+        </div>
+    </div>
+
+    <!-- Generic Modal Dialog -->
+    <div id="modal-overlay" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                <h3 id="modal-title" class="text-xl font-black text-amber-600 dark:text-amber-400">系統提示</h3>
+                <button id="btn-close-modal-x" class="text-slate-400 hover:text-slate-600 dark:hover:text-white font-black text-xl">✕</button>
+            </div>
+            <div id="modal-body" class="text-slate-800 dark:text-slate-200 text-base leading-relaxed max-h-96 overflow-y-auto whitespace-pre-wrap font-mono bg-slate-50 dark:bg-slate-950 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800">
+                <!-- Modal content -->
+            </div>
+            <div id="modal-footer" class="flex justify-end gap-3 pt-2">
+                <button id="btn-close-modal" class="px-5 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-sm border border-slate-300 dark:border-slate-700">
+                    關閉
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        (function () {
+            'use strict';
+
+            // Default State Definition
+            const DEFAULT_STATE = {
+                darkMode: true,
+                p1Deck: '',
+                p2Deck: '',
+                activeTurnId: 't1_p1',
+                turns: []
+            };
+
+            let appState = loadInitialState();
+
+            // Config for uniform toggle buttons with distinct themes
+            const ACTION_CONFIGS = {
+                supporter: { 
+                    label: '支援者', 
+                    activeText: '已使用', 
+                    inactiveText: '未使用', 
+                    activeColor: 'bg-emerald-600 border-emerald-400 text-white shadow-md ring-2 ring-emerald-500/30',
+                    inactiveColor: 'bg-slate-100 dark:bg-slate-950/60 border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-600'
+                },
+                energy: { 
+                    label: '填能', 
+                    activeText: '已填能', 
+                    inactiveText: '未填能', 
+                    activeColor: 'bg-amber-600 border-amber-400 text-white shadow-md ring-2 ring-amber-500/30',
+                    inactiveColor: 'bg-slate-100 dark:bg-slate-950/60 border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-600'
+                },
+                retreat: { 
+                    label: '撤退', 
+                    activeText: '已撤退', 
+                    inactiveText: '未撤退', 
+                    activeColor: 'bg-purple-600 border-purple-400 text-white shadow-md ring-2 ring-purple-500/30',
+                    inactiveColor: 'bg-slate-100 dark:bg-slate-950/60 border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-600'
+                },
+                stadium: { 
+                    label: '場地', 
+                    activeText: '已場地', 
+                    inactiveText: '未使用', 
+                    activeColor: 'bg-cyan-600 border-cyan-400 text-white shadow-md ring-2 ring-cyan-500/30',
+                    inactiveColor: 'bg-slate-100 dark:bg-slate-950/60 border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-600'
+                },
+                bench: { 
+                    label: '下場地', 
+                    activeText: '已下場地', 
+                    inactiveText: '未下場地', 
+                    activeColor: 'bg-rose-600 border-rose-400 text-white shadow-md ring-2 ring-rose-500/30',
+                    inactiveColor: 'bg-slate-100 dark:bg-slate-950/60 border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-600'
+                }
+            };
+
+            // Generate default 3 turns for P1 & P2
+            function generateDefaultTurns(count = 3) {
+                const turns = [];
+                for (let t = 1; t <= count; t++) {
+                    turns.push({
+                        id: `t${t}_p1`,
+                        turnNum: t,
+                        playerKey: 'p1',
+                        supporter: false,
+                        energy: false,
+                        retreat: false,
+                        stadium: false,
+                        bench: false,
+                        prizesTaken: 0,
+                        prizesPenalized: 0
+                    });
+                    turns.push({
+                        id: `t${t}_p2`,
+                        turnNum: t,
+                        playerKey: 'p2',
+                        supporter: false,
+                        energy: false,
+                        retreat: false,
+                        stadium: false,
+                        bench: false,
+                        prizesTaken: 0,
+                        prizesPenalized: 0
+                    });
+                }
+                return turns;
+            }
+
+            function loadInitialState() {
+                try {
+                    const saved = localStorage.getItem('tcg_referee_app_v5');
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        if (parsed && Array.isArray(parsed.turns) && parsed.turns.length > 0) {
+                            return parsed;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('LocalStorage load error:', e);
+                }
+                const initialState = JSON.parse(JSON.stringify(DEFAULT_STATE));
+                initialState.turns = generateDefaultTurns(3);
+                return initialState;
+            }
+
+            function saveState() {
+                try {
+                    localStorage.setItem('tcg_referee_app_v5', JSON.stringify(appState));
+                    const statusEl = document.getElementById('save-status');
+                    if (statusEl) {
+                        statusEl.classList.remove('opacity-40');
+                        setTimeout(() => statusEl.classList.add('opacity-40'), 800);
+                    }
+                } catch (e) {
+                    console.warn('LocalStorage save error:', e);
+                }
+            }
+
+            // DOM Elements
+            const inputP1Deck = document.getElementById('input-p1-deck');
+            const inputP2Deck = document.getElementById('input-p2-deck');
+            const btnSwapPlayers = document.getElementById('btn-swap-players');
+            
+            const btnThemeToggle = document.getElementById('btn-theme-toggle');
+            const themeIcon = document.getElementById('theme-icon');
+            const themeText = document.getElementById('theme-text');
+
+            const btnReset = document.getElementById('btn-reset');
+            const btnCopyReport = document.getElementById('btn-copy-report');
+            const btnExportCSV = document.getElementById('btn-export-csv');
+            const btnAddTurn = document.getElementById('btn-add-turn');
+
+            const btnPrevTurn = document.getElementById('btn-prev-turn');
+            const btnNextTurn = document.getElementById('btn-next-turn');
+            const activeTurnLabel = document.getElementById('active-turn-label');
+            const activeDeckLabel = document.getElementById('active-deck-label');
+
+            const modalOverlay = document.getElementById('modal-overlay');
+            const modalTitle = document.getElementById('modal-title');
+            const modalBody = document.getElementById('modal-body');
+            const btnCloseModal = document.getElementById('btn-close-modal');
+            const btnCloseModalX = document.getElementById('btn-close-modal-x');
+
+            function syncInputsFromState() {
+                if (inputP1Deck) inputP1Deck.value = appState.p1Deck || '';
+                if (inputP2Deck) inputP2Deck.value = appState.p2Deck || '';
+                applyTheme(appState.darkMode);
+            }
+
+            function applyTheme(isDark) {
+                if (isDark) {
+                    document.documentElement.classList.add('dark');
+                    if (themeIcon) themeIcon.textContent = '🌙';
+                    if (themeText) themeText.textContent = '深色模式';
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    if (themeIcon) themeIcon.textContent = '☀️';
+                    if (themeText) themeText.textContent = '淺色模式';
+                }
+            }
+
+            function showModal(title, text) {
+                if (modalTitle) modalTitle.textContent = title;
+                if (modalBody) modalBody.textContent = text;
+                if (modalOverlay) modalOverlay.classList.remove('hidden');
+            }
+
+            function closeModal() {
+                if (modalOverlay) modalOverlay.classList.add('hidden');
+            }
+
+            // Expose Global Window Handlers
+            window.toggleAction = function (turnId, actionKey) {
+                const turnObj = appState.turns.find(t => t.id === turnId);
+                if (turnObj) {
+                    turnObj[actionKey] = !turnObj[actionKey];
+                    appState.activeTurnId = turnId;
+                    saveState();
+                    renderAll();
+                }
+            };
+
+            window.selectPrizeTaken = function (turnId, count) {
+                const turnObj = appState.turns.find(t => t.id === turnId);
+                if (turnObj) {
+                    turnObj.prizesTaken = parseInt(count, 10) || 0;
+                    appState.activeTurnId = turnId;
+                    saveState();
+                    renderAll();
+                }
+            };
+
+            window.togglePrizesPenalized = function (turnId, count) {
+                const turnObj = appState.turns.find(t => t.id === turnId);
+                if (turnObj) {
+                    turnObj.prizesPenalized = (turnObj.prizesPenalized === count) ? 0 : count;
+                    appState.activeTurnId = turnId;
+                    saveState();
+                    renderAll();
+                }
+            };
+
+            window.setActiveTurn = function (turnId) {
+                appState.activeTurnId = turnId;
+                saveState();
+                renderAll();
+            };
+
+            function addNextTurn() {
+                const maxTurnNum = appState.turns.reduce((max, item) => Math.max(max, item.turnNum), 0);
+                const nextTurnNum = maxTurnNum + 1;
+                appState.turns.push({
+                    id: `t${nextTurnNum}_p1`,
+                    turnNum: nextTurnNum,
+                    playerKey: 'p1',
+                    supporter: false,
+                    energy: false,
+                    retreat: false,
+                    stadium: false,
+                    bench: false,
+                    prizesTaken: 0,
+                    prizesPenalized: 0
+                });
+                appState.turns.push({
+                    id: `t${nextTurnNum}_p2`,
+                    turnNum: nextTurnNum,
+                    playerKey: 'p2',
+                    supporter: false,
+                    energy: false,
+                    retreat: false,
+                    stadium: false,
+                    bench: false,
+                    prizesTaken: 0,
+                    prizesPenalized: 0
+                });
+                appState.activeTurnId = `t${nextTurnNum}_p1`;
+                saveState();
+                renderAll();
+                scrollToActiveTurn();
+            }
+
+            function prevTurn() {
+                const currentIndex = appState.turns.findIndex(t => t.id === appState.activeTurnId);
+                if (currentIndex > 0) {
+                    appState.activeTurnId = appState.turns[currentIndex - 1].id;
+                    saveState();
+                    renderAll();
+                    scrollToActiveTurn();
+                }
+            }
+
+            function nextTurn() {
+                const currentIndex = appState.turns.findIndex(t => t.id === appState.activeTurnId);
+                if (currentIndex === -1) {
+                    if (appState.turns.length > 0) appState.activeTurnId = appState.turns[0].id;
+                } else if (currentIndex < appState.turns.length - 1) {
+                    appState.activeTurnId = appState.turns[currentIndex + 1].id;
+                } else {
+                    addNextTurn();
+                    return;
+                }
+                saveState();
+                renderAll();
+                scrollToActiveTurn();
+            }
+
+            function scrollToActiveTurn() {
+                setTimeout(() => {
+                    const activeEl = document.querySelector(`[data-turn-id="${appState.activeTurnId}"]`);
+                    if (activeEl) {
+                        activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }
+                }, 50);
+            }
+
+            function resetMatch() {
+                appState = JSON.parse(JSON.stringify(DEFAULT_STATE));
+                appState.turns = generateDefaultTurns(3);
+                saveState();
+                syncInputsFromState();
+                renderAll();
+            }
+
+            function renderAll() {
+                updatePrizeCounters();
+                renderChecklist();
+                updateActiveTurnNav();
+            }
+
+            function updatePrizeCounters() {
+                let p1TakenSum = 0;
+                let p2TakenSum = 0;
+
+                appState.turns.forEach(t => {
+                    if (t.playerKey === 'p1') p1TakenSum += (t.prizesTaken || 0);
+                    if (t.playerKey === 'p2') p2TakenSum += (t.prizesTaken || 0);
+                });
+
+                const p1Remaining = Math.max(0, 6 - p1TakenSum);
+                const p2Remaining = Math.max(0, 6 - p2TakenSum);
+
+                const elP1Rem = document.getElementById('p1-remaining-prizes');
+                const elP2Rem = document.getElementById('p2-remaining-prizes');
+                const elP1Sum = document.getElementById('p1-deck-summary');
+                const elP2Sum = document.getElementById('p2-deck-summary');
+
+                if (elP1Rem) elP1Rem.textContent = p1Remaining;
+                if (elP2Rem) elP2Rem.textContent = p2Remaining;
+
+                if (elP1Sum) elP1Sum.textContent = appState.p1Deck || '先攻牌組';
+                if (elP2Sum) elP2Sum.textContent = appState.p2Deck || '後攻牌組';
+            }
+
+            function updateActiveTurnNav() {
+                const activeTurn = appState.turns.find(t => t.id === appState.activeTurnId);
+                if (activeTurn) {
+                    const isP1 = activeTurn.playerKey === 'p1';
+                    const deckName = isP1 ? (appState.p1Deck || '先攻牌組') : (appState.p2Deck || '後攻牌組');
+                    if (activeTurnLabel) {
+                        activeTurnLabel.textContent = `Turn ${activeTurn.turnNum} (${isP1 ? '先攻 P1' : '後攻 P2'})`;
+                    }
+                    if (activeDeckLabel) {
+                        activeDeckLabel.textContent = deckName;
+                    }
+                }
+            }
+
+            function renderChecklist() {
+                const tbody = document.getElementById('desktop-tbody');
+                const cardsContainer = document.getElementById('mobile-cards-container');
+
+                if (!tbody || !cardsContainer) return;
+
+                let desktopHtml = '';
+                let mobileHtml = '';
+
+                appState.turns.forEach((turnObj) => {
+                    const isActive = turnObj.id === appState.activeTurnId;
+                    const isP1 = turnObj.playerKey === 'p1';
+                    const deckName = isP1 ? (appState.p1Deck || '先攻牌組') : (appState.p2Deck || '後攻牌組');
+                    const playerTag = isP1 ? '先攻' : '後攻';
+                    const badgeBg = isP1 
+                        ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800' 
+                        : 'bg-sky-100 dark:bg-sky-950/80 text-sky-700 dark:text-sky-400 border-sky-300 dark:border-sky-800';
+                    
+                    const activeRowBg = isActive 
+                        ? 'bg-amber-500/15 dark:bg-amber-400/15' 
+                        : (isP1 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-900/60');
+
+                    const firstCellBorder = isActive
+                        ? 'border-l-4 border-l-amber-500 dark:border-l-amber-400'
+                        : 'border-l-4 border-l-transparent';
+
+                    // Desktop Table Row
+                    desktopHtml += `
+                        <tr data-turn-id="${turnObj.id}" onclick="window.setActiveTurn('${turnObj.id}')" class="${activeRowBg} hover:bg-amber-500/10 dark:hover:bg-amber-400/10 transition border-b border-slate-200 dark:border-slate-800/60 cursor-pointer">
+                            <td class="py-4 px-3 text-center border-r border-slate-200 dark:border-slate-800/80 ${firstCellBorder}">
+                                <div class="inline-flex flex-col items-center justify-center w-full">
+                                    <span class="text-sm font-black ${isActive ? 'text-amber-600 dark:text-amber-400' : 'text-slate-500 dark:text-slate-400'}">Turn ${turnObj.turnNum}</span>
+                                    <span class="px-2.5 py-0.5 rounded-full text-xs sm:text-sm font-black border ${badgeBg} mt-0.5">
+                                        ${playerTag}
+                                    </span>
+                                    <span class="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-300 truncate max-w-[110px] mt-1">${deckName}</span>
+                                </div>
+                            </td>
+                            ${['supporter', 'energy', 'retreat', 'stadium', 'bench'].map(key => {
+                                const cfg = ACTION_CONFIGS[key];
+                                const isChecked = turnObj[key];
+                                return `
+                                    <td class="py-3 px-2 text-center border-r border-slate-200 dark:border-slate-800/80">
+                                        <button onclick="event.stopPropagation(); window.toggleAction('${turnObj.id}', '${key}')" 
+                                            class="w-full py-3 px-2 rounded-xl font-black text-sm sm:text-base border transition-all ${
+                                                isChecked 
+                                                    ? cfg.activeColor 
+                                                    : cfg.inactiveColor
+                                            }">
+                                            ${isChecked ? cfg.activeText : cfg.inactiveText}
+                                        </button>
+                                    </td>
+                                `;
+                            }).join('')}
+                            
+                            <!-- Prizes Taken Dropdown -->
+                            <td class="py-3 px-3 text-center border-r border-slate-200 dark:border-slate-800/80">
+                                <select onclick="event.stopPropagation();" onchange="window.selectPrizeTaken('${turnObj.id}', this.value)" 
+                                    class="w-full bg-slate-50 dark:bg-slate-950 border border-amber-500/50 rounded-xl px-2.5 py-2.5 text-sm sm:text-base font-black text-amber-600 dark:text-amber-400 focus:outline-none focus:border-amber-500">
+                                    ${[0, 1, 2, 3, 4, 5, 6].map(n => `
+                                        <option value="${n}" ${turnObj.prizesTaken === n ? 'selected' : ''}>
+                                            ${n === 0 ? '拿 0 張' : `+ ${n} 獎賞卡`}
+                                        </option>
+                                    `).join('')}
+                                </select>
+                            </td>
+
+                            <!-- Prize Penalties 1 & 3 -->
+                            <td class="py-3 px-3 text-center">
+                                <div class="flex items-center justify-center gap-1.5">
+                                    ${[1, 3].map(num => `
+                                        <button onclick="event.stopPropagation(); window.togglePrizesPenalized('${turnObj.id}', ${num})" 
+                                            class="px-2.5 py-2 rounded-xl text-xs sm:text-sm font-black border transition-all ${
+                                                turnObj.prizesPenalized === num 
+                                                    ? 'bg-red-600 border-red-500 text-white shadow-md' 
+                                                    : 'bg-slate-100 dark:bg-slate-950/60 border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-600'
+                                            }">
+                                            罰 ${num}
+                                        </button>
+                                    `).join('')}
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+
+                    // Mobile Touch Card View
+                    const activeCardBorder = isActive 
+                        ? 'bg-amber-500/10 dark:bg-amber-400/10 border-amber-500 dark:border-amber-400 border-l-8 border-l-amber-500 dark:border-l-amber-400 ring-2 ring-amber-400/20' 
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 border-l-8 border-l-transparent';
+
+                    mobileHtml += `
+                        <div data-turn-id="${turnObj.id}" onclick="window.setActiveTurn('${turnObj.id}')" class="${activeCardBorder} rounded-2xl p-4 shadow-lg space-y-3 cursor-pointer transition">
+                            <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2.5">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-lg font-black text-amber-600 dark:text-amber-400">Turn ${turnObj.turnNum}</span>
+                                    <span class="px-2.5 py-0.5 rounded-full text-xs font-black border ${badgeBg}">
+                                        ${playerTag}
+                                    </span>
+                                    <span class="text-base font-bold text-slate-800 dark:text-slate-200 truncate max-w-[180px]">${deckName}</span>
+                                </div>
+                            </div>
+
+                            <!-- Mobile Action Buttons Grid -->
+                            <div class="grid grid-cols-2 gap-2">
+                                ${['supporter', 'energy', 'retreat', 'stadium', 'bench'].map(key => {
+                                    const cfg = ACTION_CONFIGS[key];
+                                    const isChecked = turnObj[key];
+                                    return `
+                                        <button onclick="event.stopPropagation(); window.toggleAction('${turnObj.id}', '${key}')" 
+                                            class="py-3 px-3.5 rounded-xl font-black text-base border flex items-center justify-between transition-all ${
+                                                isChecked 
+                                                    ? cfg.activeColor 
+                                                    : cfg.inactiveColor
+                                            }">
+                                            <span>${cfg.label}</span>
+                                            <span class="text-xs sm:text-sm font-bold opacity-90">${isChecked ? cfg.activeText : cfg.inactiveText}</span>
+                                        </button>
+                                    `;
+                                }).join('')}
+                            </div>
+
+                            <!-- Mobile Prize Controls -->
+                            <div class="grid grid-cols-2 gap-2 border-t border-slate-200 dark:border-slate-800/80 pt-2.5">
+                                <div>
+                                    <label class="block text-xs sm:text-sm font-black text-amber-600 dark:text-amber-400 mb-1">獲取獎賞卡:</label>
+                                    <select onclick="event.stopPropagation();" onchange="window.selectPrizeTaken('${turnObj.id}', this.value)" 
+                                        class="w-full bg-slate-50 dark:bg-slate-950 border border-amber-500/50 rounded-xl px-2.5 py-2 text-sm font-black text-amber-600 dark:text-amber-400 focus:outline-none">
+                                        ${[0, 1, 2, 3, 4, 5, 6].map(n => `
+                                            <option value="${n}" ${turnObj.prizesTaken === n ? 'selected' : ''}>
+                                                ${n === 0 ? '拿 0 張' : `+ ${n} 獎賞卡`}
+                                            </option>
+                                        `).join('')}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs sm:text-sm font-black text-red-600 dark:text-red-400 mb-1">罰獎賞卡:</label>
+                                    <div class="flex items-center gap-1.5">
+                                        ${[1, 3].map(num => `
+                                            <button onclick="event.stopPropagation(); window.togglePrizesPenalized('${turnObj.id}', ${num})" 
+                                                class="w-full py-2 rounded-xl text-xs sm:text-sm font-black border ${
+                                                    turnObj.prizesPenalized === num 
+                                                        ? 'bg-red-600 border-red-500 text-white' 
+                                                        : 'bg-slate-100 dark:bg-slate-950 border-slate-300 dark:border-slate-800 text-slate-700 dark:text-slate-300'
+                                                }">
+                                                罰 ${num}
+                                            </button>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                tbody.innerHTML = desktopHtml;
+                cardsContainer.innerHTML = mobileHtml;
+            }
+
+            function generateTextReport() {
+                const p1Deck = appState.p1Deck || '先攻牌組';
+                const p2Deck = appState.p2Deck || '後攻牌組';
+
+                let p1TakenSum = 0;
+                let p2TakenSum = 0;
+                appState.turns.forEach(t => {
+                    if (t.playerKey === 'p1') p1TakenSum += (t.prizesTaken || 0);
+                    if (t.playerKey === 'p2') p2TakenSum += (t.prizesTaken || 0);
+                });
+
+                let report = `【TCG 裁判盯桌紀錄】\n`;
+                report += `先攻 (P1)：${p1Deck} (剩餘 ${Math.max(0, 6 - p1TakenSum)} 獎賞卡)\n`;
+                report += `後攻 (P2)：${p2Deck} (剩餘 ${Math.max(0, 6 - p2TakenSum)} 獎賞卡)\n`;
+                report += `--------------------------------\n`;
+
+                appState.turns.forEach((turnObj) => {
+                    const isP1 = turnObj.playerKey === 'p1';
+                    const playerTag = isP1 ? '先攻' : '後攻';
+                    const deckName = isP1 ? p1Deck : p2Deck;
+
+                    const actions = [];
+                    if (turnObj.supporter) actions.push('支援者');
+                    if (turnObj.energy) actions.push('填能');
+                    if (turnObj.retreat) actions.push('撤退');
+                    if (turnObj.stadium) actions.push('場地');
+                    if (turnObj.bench) actions.push('下場地');
+
+                    const actionStr = actions.length > 0 ? actions.join(' / ') : '無主要動作';
+                    
+                    let prizeStr = '';
+                    if (turnObj.prizesTaken > 0) prizeStr += ` [拿 ${turnObj.prizesTaken} 獎賞卡]`;
+                    if (turnObj.prizesPenalized > 0) prizeStr += ` [罰 ${turnObj.prizesPenalized} 獎賞卡]`;
+
+                    report += `Turn ${turnObj.turnNum} (${playerTag} - ${deckName}): ${actionStr}${prizeStr}\n`;
+                });
+
+                return report;
+            }
+
+            function exportCSV() {
+                const p1Deck = appState.p1Deck || '先攻牌組';
+                const p2Deck = appState.p2Deck || '後攻牌組';
+
+                let csvContent = "\uFEFF"; // UTF-8 BOM
+                csvContent += `先攻牌組,${p1Deck},後攻牌組,${p2Deck}\n\n`;
+                csvContent += `回合,選手,牌組,使用支援者,填能,撤退,使用場地,下場地,獲取獎賞卡,罰獎賞卡\n`;
+
+                appState.turns.forEach((turnObj) => {
+                    const isP1 = turnObj.playerKey === 'p1';
+                    const playerTag = isP1 ? '先攻' : '後攻';
+                    const deckName = isP1 ? p1Deck : p2Deck;
+
+                    csvContent += `${turnObj.turnNum},${playerTag},"${deckName}",${turnObj.supporter ? '已使用' : '未使用'},${turnObj.energy ? '已填能' : '未使用'},${turnObj.retreat ? '已撤退' : '未使用'},${turnObj.stadium ? '已場地' : '未使用'},${turnObj.bench ? '已下場地' : '未使用'},${turnObj.prizesTaken || 0},${turnObj.prizesPenalized || 0}\n`;
+                });
+
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.setAttribute('href', url);
+                link.setAttribute('download', `TCG_Referee_Monitoring.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+
+            function bindEvents() {
+                if (inputP1Deck) inputP1Deck.addEventListener('input', (e) => { 
+                    appState.p1Deck = e.target.value; 
+                    saveState(); 
+                    renderAll(); 
+                });
+                if (inputP2Deck) inputP2Deck.addEventListener('input', (e) => { 
+                    appState.p2Deck = e.target.value; 
+                    saveState(); 
+                    renderAll(); 
+                });
+
+                if (btnSwapPlayers) {
+                    btnSwapPlayers.addEventListener('click', () => {
+                        const temp = appState.p1Deck;
+                        appState.p1Deck = appState.p2Deck;
+                        appState.p2Deck = temp;
+                        syncInputsFromState();
+                        saveState();
+                        renderAll();
+                    });
+                }
+
+                if (btnThemeToggle) {
+                    btnThemeToggle.addEventListener('click', () => {
+                        appState.darkMode = !appState.darkMode;
+                        applyTheme(appState.darkMode);
+                        saveState();
+                    });
+                }
+
+                if (btnCopyReport) {
+                    btnCopyReport.addEventListener('click', () => {
+                        const text = generateTextReport();
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                            navigator.clipboard.writeText(text).then(() => {
+                                showModal('📋 報告已複製', text);
+                            }).catch(() => {
+                                showModal('📋 裁判盯桌報告', text);
+                            });
+                        } else {
+                            showModal('📋 裁判盯桌報告', text);
+                        }
+                    });
+                }
+
+                if (btnExportCSV) btnExportCSV.addEventListener('click', exportCSV);
+                if (btnAddTurn) btnAddTurn.addEventListener('click', addNextTurn);
+
+                if (btnReset) {
+                    btnReset.addEventListener('click', () => {
+                        if (confirm('確定要重置當前對局的所有紀錄嗎？')) {
+                            resetMatch();
+                        }
+                    });
+                }
+
+                if (btnPrevTurn) btnPrevTurn.addEventListener('click', prevTurn);
+                if (btnNextTurn) btnNextTurn.addEventListener('click', nextTurn);
+
+                if (btnCloseModal) btnCloseModal.addEventListener('click', closeModal);
+                if (btnCloseModalX) btnCloseModalX.addEventListener('click', closeModal);
+            }
+
+            // Initialization
+            document.addEventListener('DOMContentLoaded', () => {
+                syncInputsFromState();
+                renderAll();
+                bindEvents();
+            });
+
+            // Backup initialization on window load
+            window.onload = function () {
+                syncInputsFromState();
+                renderAll();
+            };
+        })();
+    </script>
+</body>
+</html>
